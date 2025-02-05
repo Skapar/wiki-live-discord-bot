@@ -2,25 +2,50 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"os"
 	"time"
+
+	"github.com/Skapar/wiki-live-discord-bot/internal/config"
 
 	"github.com/IBM/sarama"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/net/context"
 )
 
 func main() {
 	err := godotenv.Load()
-	if err != nil {
-		log.Println("No .env file found")
+
+	encoderCfg := zapcore.EncoderConfig{
+		TimeKey:        "ts",
+		MessageKey:     "msg",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		StacktraceKey:  "trace",
+		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeTime:     zapcore.RFC3339TimeEncoder,
+		EncodeDuration: zapcore.StringDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+		LineEnding:     zapcore.DefaultLineEnding,
 	}
+	zlogger := zap.New(
+		zapcore.NewCore(zapcore.NewConsoleEncoder(encoderCfg), os.Stdout, zap.DebugLevel),
+		zap.AddCaller(),
+		zap.AddStacktrace(zap.ErrorLevel),
+	)
+	log := zlogger.Sugar()
+
+	cfg := config.New()
+	cfg.Init()
+
 
 	fmt.Println("WIKI LIVE BOT is starting...")
-
+	
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "redis:6379",
+		Addr:     cfg.RedisAddr,
 		Password: "",
 		DB:       0,
 	})
@@ -33,12 +58,12 @@ func main() {
 		fmt.Println("Успешное подключение к Redis!")
 	}
 
-	config := sarama.NewConfig()
-	config.Producer.RequiredAcks = sarama.WaitForAll
-	config.Producer.Partitioner = sarama.NewRoundRobinPartitioner
-	config.Producer.Return.Successes = true
+	kafkaConfig := sarama.NewConfig()
+	kafkaConfig.Producer.RequiredAcks = sarama.WaitForAll
+	kafkaConfig.Producer.Partitioner = sarama.NewRoundRobinPartitioner
+	kafkaConfig.Producer.Return.Successes = true
 
-	producer, err := sarama.NewSyncProducer([]string{"kafka:9092"}, config)
+	producer, err := sarama.NewSyncProducer([]string{cfg.KafkaAddr}, kafkaConfig)
 	if err != nil {
 		log.Fatalf("Ошибка подключения к Kafka: %v\n", err)
 	} else {
