@@ -26,7 +26,7 @@ func main() {
 	})
 
 	ctx := context.Background()
-	_, err = rdb.Ping(ctx).Result() // Обновляем переменную err
+	_, err = rdb.Ping(ctx).Result()
 	if err != nil {
 		log.Fatalf("Ошибка подключения к Redis: %v\n", err)
 	} else {
