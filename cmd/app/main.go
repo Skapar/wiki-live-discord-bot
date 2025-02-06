@@ -32,7 +32,7 @@ func main() {
     if err != nil {
         log.Fatalf("Ошибка подключения к Kafka: %v\n", err)
     } else {
-        fmt.Println("Успешное подключение к Kafka!")
+        log.Info("Успешное подключение к Kafka!")
     }
 
     message := &model.Message{
